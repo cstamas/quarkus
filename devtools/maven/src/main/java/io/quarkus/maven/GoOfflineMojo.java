@@ -19,7 +19,6 @@ import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.graph.DependencyNode;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
 import org.eclipse.aether.repository.RemoteRepository;
 
 import io.quarkus.bootstrap.resolver.AppModelResolverException;
@@ -31,7 +30,6 @@ import io.quarkus.bootstrap.resolver.maven.workspace.LocalWorkspace;
 import io.quarkus.bootstrap.util.IoUtils;
 import io.quarkus.bootstrap.workspace.ArtifactSources;
 import io.quarkus.maven.dependency.ArtifactCoords;
-import io.quarkus.runtime.LaunchMode;
 
 /**
  * This goal downloads all the Maven artifact dependencies required to build, run, test and
@@ -45,9 +43,6 @@ public class GoOfflineMojo extends AbstractMojo {
 
     @Component
     RepositorySystem repoSystem;
-
-    @Component
-    RemoteRepositoryManager remoteRepositoryManager;
 
     @Parameter(defaultValue = "${repositorySystemSession}", readonly = true)
     RepositorySystemSession repoSession;
@@ -117,7 +112,6 @@ public class GoOfflineMojo extends AbstractMojo {
         try {
             return MavenArtifactResolver.builder()
                     .setCurrentProject(project.getBasedir().toString())
-                    .setRemoteRepositoryManager(remoteRepositoryManager)
                     .setRemoteRepositories(repos)
                     .setPreferPomsFromWorkspace(true)
                     .build();

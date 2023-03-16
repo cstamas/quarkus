@@ -121,7 +121,6 @@ public abstract class QuarkusProjectStateMojoBase extends QuarkusProjectMojoBase
                 session.setTransferListener(new QuietMavenTransferListener());
                 final BootstrapMavenContext ctx = new BootstrapMavenContext(BootstrapMavenContext.config()
                         .setRepositorySystem(baseResolver.getSystem())
-                        .setRemoteRepositoryManager(baseResolver.getRemoteRepositoryManager())
                         .setRemoteRepositories(baseResolver.getRepositories())
                         .setWorkspaceDiscovery(false)
                         .setRepositorySystemSession(session));
@@ -135,8 +134,8 @@ public abstract class QuarkusProjectStateMojoBase extends QuarkusProjectMojoBase
     @Override
     protected MavenArtifactResolver initArtifactResolver() throws MojoExecutionException {
         try {
-            return MavenArtifactResolver.builder()
-                    .setRemoteRepositoryManager(remoteRepositoryManager)
+            return MavenArtifactResolver.builder(sisuBooter)
+                    .setRepositorySystem(repoSystem)
                     // The system needs to be initialized with the bootstrap model builder to properly interpolate system properties set on the command line
                     // e.g. -Dquarkus.platform.version=xxx
                     //.setRepositorySystem(bootstrapProvider.repositorySystem())

@@ -76,9 +76,8 @@ public class MavenRegistryClientFactory implements RegistryClientFactory {
         ArtifactResult result;
         if (!registryRepos.isEmpty()) {
             // first, we try applying the mirrors and proxies found in the user settings
-            final List<RemoteRepository> aggregatedRepos = originalResolver.getRemoteRepositoryManager().aggregateRepositories(
-                    originalResolver.getSession(),
-                    Collections.emptyList(), registryRepos, true);
+            final List<RemoteRepository> aggregatedRepos = originalResolver.aggregateRepositories(
+                    Collections.emptyList(), registryRepos);
             resolver = newResolver(originalResolver, aggregatedRepos, config, log);
             try {
                 result = MavenRegistryArtifactResolverWithCleanup.resolveAndCleanupOldTimestampedVersions(resolver,
@@ -331,7 +330,6 @@ public class MavenRegistryClientFactory implements RegistryClientFactory {
                     BootstrapMavenContext.config()
                             .setRepositorySystem(resolver.getSystem())
                             .setRepositorySystemSession(setRegistryTransferListener(config, log, resolver.getSession()))
-                            .setRemoteRepositoryManager(resolver.getRemoteRepositoryManager())
                             .setRemoteRepositories(aggregatedRepos)
                             .setLocalRepository(resolver.getMavenContext().getLocalRepo())
                             .setCurrentProject(resolver.getMavenContext().getCurrentProject()));

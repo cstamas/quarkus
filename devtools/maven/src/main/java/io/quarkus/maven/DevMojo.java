@@ -70,7 +70,6 @@ import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.graph.Exclusion;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.repository.WorkspaceReader;
 import org.eclipse.aether.resolution.ArtifactRequest;
@@ -288,9 +287,6 @@ public class DevMojo extends AbstractMojo {
 
     @Component
     private RepositorySystem repoSystem;
-
-    @Component
-    RemoteRepositoryManager remoteRepositoryManager;
 
     @Parameter(defaultValue = "${repositorySystemSession}", readonly = true)
     private RepositorySystemSession repoSession;
@@ -1103,7 +1099,6 @@ public class DevMojo extends AbstractMojo {
         } else {
             final BootstrapMavenContextConfig<?> mvnConfig = BootstrapMavenContext.config()
                     .setRemoteRepositories(repos)
-                    .setRemoteRepositoryManager(remoteRepositoryManager)
                     .setWorkspaceDiscovery(true)
                     .setPreferPomsFromWorkspace(true)
                     .setCurrentProject(project.getFile().toString());

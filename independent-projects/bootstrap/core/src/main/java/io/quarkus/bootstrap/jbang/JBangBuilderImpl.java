@@ -42,7 +42,6 @@ public class JBangBuilderImpl {
             quarkusResolver = MavenArtifactResolver.builder()
                     .setRepositorySystem(mvnCtx.getRepositorySystem())
                     .setRepositorySystemSession(mvnCtx.getRepositorySystemSession())
-                    .setRemoteRepositoryManager(mvnCtx.getRemoteRepositoryManager())
                     .setRemoteRepositories(remoteRepos)
                     .build();
         } catch (BootstrapMavenException e) {

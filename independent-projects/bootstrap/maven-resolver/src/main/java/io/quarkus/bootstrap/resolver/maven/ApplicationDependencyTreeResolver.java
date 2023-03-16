@@ -149,7 +149,6 @@ public class ApplicationDependencyTreeResolver {
                     .setRepositorySystem(resolver.getSystem())
                     .setRepositorySystemSession(session)
                     .setRemoteRepositories(resolver.getRepositories())
-                    .setRemoteRepositoryManager(resolver.getRemoteRepositoryManager())
                     .setCurrentProject(resolver.getMavenContext().getCurrentProject())
                     .setWorkspaceDiscovery(false)));
         } catch (BootstrapMavenException e) {
@@ -739,9 +738,8 @@ public class ApplicationDependencyTreeResolver {
         ExtensionDependency getExtensionDependency() {
             if (dependency == null) {
                 final DefaultDependencyNode rtNode = new DefaultDependencyNode(new Dependency(info.runtimeArtifact, "runtime"));
-                rtNode.setVersion(new BootstrapArtifactVersion(info.runtimeArtifact.getVersion()));
-                rtNode.setVersionConstraint(new BootstrapArtifactVersionConstraint(
-                        new BootstrapArtifactVersion(info.runtimeArtifact.getVersion())));
+                rtNode.setVersion(VersionHelper.newVersion(info.runtimeArtifact.getVersion()));
+                rtNode.setVersionConstraint(VersionHelper.newVersionConstraint(info.runtimeArtifact.getVersion()));
                 dependency = new ExtensionDependency(info, rtNode, dependent.exclusions);
             }
             return dependency;

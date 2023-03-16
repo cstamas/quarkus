@@ -1297,7 +1297,6 @@ public class ExtensionDescriptorMojo extends AbstractMojo {
             try {
                 final BootstrapMavenContext ctx = new BootstrapMavenContext(BootstrapMavenContext.config()
                         .setRepositorySystem(repoSystem)
-                        .setRemoteRepositoryManager(remoteRepoManager)
                         .setRepositorySystemSession(session)
                         .setRemoteRepositories(repos)
                         .setPreferPomsFromWorkspace(true)

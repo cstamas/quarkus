@@ -13,19 +13,17 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.Repository;
 import org.apache.maven.model.building.FileModelSource;
-import org.apache.maven.model.building.ModelSource;
+import org.apache.maven.model.building.ModelSource2;
 import org.apache.maven.model.resolution.InvalidRepositoryException;
 import org.apache.maven.model.resolution.ModelResolver;
 import org.apache.maven.model.resolution.UnresolvableModelException;
 import org.apache.maven.repository.internal.ArtifactDescriptorUtils;
 import org.eclipse.aether.DefaultRepositorySystemSession;
-import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.RequestTrace;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.impl.ArtifactResolver;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
 import org.eclipse.aether.impl.VersionRangeResolver;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.ArtifactRequest;
@@ -42,29 +40,31 @@ public class BootstrapModelResolver implements ModelResolver {
 
     public static ModelResolver newInstance(BootstrapMavenContext ctx, LocalWorkspace workspace)
             throws BootstrapMavenException {
-        final RepositorySystem repoSystem = ctx.getRepositorySystem();
         return new BootstrapModelResolver(
+                ctx,
                 new DefaultRepositorySystemSession(ctx.getRepositorySystemSession()).setWorkspaceReader(workspace), null, null,
                 new ArtifactResolver() {
                     @Override
                     public ArtifactResult resolveArtifact(RepositorySystemSession session, ArtifactRequest request)
                             throws ArtifactResolutionException {
-                        return repoSystem.resolveArtifact(session, request);
+                        return ctx.getRepositorySystem().resolveArtifact(session, request);
                     }
 
                     @Override
                     public List<ArtifactResult> resolveArtifacts(RepositorySystemSession session,
                             Collection<? extends ArtifactRequest> requests) throws ArtifactResolutionException {
-                        return repoSystem.resolveArtifacts(session, requests);
+                        return ctx.getRepositorySystem().resolveArtifacts(session, requests);
                     }
                 }, new VersionRangeResolver() {
                     @Override
                     public VersionRangeResult resolveVersionRange(RepositorySystemSession session,
                             VersionRangeRequest request) throws VersionRangeResolutionException {
-                        return repoSystem.resolveVersionRange(session, request);
+                        return ctx.getRepositorySystem().resolveVersionRange(session, request);
                     }
-                }, ctx.getRemoteRepositoryManager(), ctx.getRemoteRepositories());
+                }, ctx.getRemoteRepositories());
     }
+
+    private final BootstrapMavenContext bootstrapMavenContext;
 
     private final RepositorySystemSession session;
     private final RequestTrace trace;
@@ -73,30 +73,29 @@ public class BootstrapModelResolver implements ModelResolver {
     private final List<RemoteRepository> externalRepositories;
     private final ArtifactResolver resolver;
     private final VersionRangeResolver versionRangeResolver;
-    private final RemoteRepositoryManager remoteRepositoryManager;
     private final Set<String> repositoryIds;
 
-    BootstrapModelResolver(RepositorySystemSession session, RequestTrace trace, String context,
-            ArtifactResolver resolver, VersionRangeResolver versionRangeResolver,
-            RemoteRepositoryManager remoteRepositoryManager, List<RemoteRepository> repositories) {
+    BootstrapModelResolver(BootstrapMavenContext bootstrapMavenContext, RepositorySystemSession session,
+            RequestTrace trace, String context, ArtifactResolver resolver, VersionRangeResolver versionRangeResolver,
+            List<RemoteRepository> repositories) {
+        this.bootstrapMavenContext = bootstrapMavenContext;
         this.session = session;
         this.trace = trace;
         this.context = context;
         this.resolver = resolver;
         this.versionRangeResolver = versionRangeResolver;
-        this.remoteRepositoryManager = remoteRepositoryManager;
         this.repositories = repositories;
         this.externalRepositories = List.copyOf(repositories);
         this.repositoryIds = new HashSet<>();
     }
 
     private BootstrapModelResolver(BootstrapModelResolver original) {
+        this.bootstrapMavenContext = original.bootstrapMavenContext;
         this.session = original.session;
         this.trace = original.trace;
         this.context = original.context;
         this.resolver = original.resolver;
         this.versionRangeResolver = original.versionRangeResolver;
-        this.remoteRepositoryManager = original.remoteRepositoryManager;
         this.repositories = new ArrayList<>(original.repositories);
         this.externalRepositories = original.externalRepositories;
         this.repositoryIds = new HashSet<>(original.repositoryIds);
@@ -126,7 +125,7 @@ public class BootstrapModelResolver implements ModelResolver {
         List<RemoteRepository> newRepositories = Collections
                 .singletonList(ArtifactDescriptorUtils.toRemoteRepository(repository));
 
-        this.repositories = remoteRepositoryManager.aggregateRepositories(session, repositories, newRepositories, true);
+        this.repositories = bootstrapMavenContext.aggregateRepositories(repositories, newRepositories);
     }
 
     private static void removeMatchingRepository(Iterable<RemoteRepository> repositories, final String id) {
@@ -145,7 +144,7 @@ public class BootstrapModelResolver implements ModelResolver {
     }
 
     @Override
-    public ModelSource resolveModel(String groupId, String artifactId, String version)
+    public ModelSource2 resolveModel(String groupId, String artifactId, String version)
             throws UnresolvableModelException {
         Artifact pomArtifact = new DefaultArtifact(groupId, artifactId, "", "pom", version);
 
@@ -163,7 +162,7 @@ public class BootstrapModelResolver implements ModelResolver {
     }
 
     @Override
-    public ModelSource resolveModel(final Parent parent)
+    public ModelSource2 resolveModel(final Parent parent)
             throws UnresolvableModelException {
         try {
             final Artifact artifact = new DefaultArtifact(parent.getGroupId(), parent.getArtifactId(), "", "pom",
@@ -202,7 +201,7 @@ public class BootstrapModelResolver implements ModelResolver {
     }
 
     @Override
-    public ModelSource resolveModel(final Dependency dependency)
+    public ModelSource2 resolveModel(final Dependency dependency)
             throws UnresolvableModelException {
         try {
             final Artifact artifact = new DefaultArtifact(dependency.getGroupId(), dependency.getArtifactId(), "",

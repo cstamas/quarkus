@@ -21,12 +21,12 @@ import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
 import org.eclipse.aether.repository.RemoteRepository;
 
 import io.quarkus.bootstrap.BootstrapConstants;
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
 import io.quarkus.bootstrap.resolver.maven.MavenArtifactResolver;
+import io.quarkus.bootstrap.resolver.maven.internal.SisuBooter;
 import io.quarkus.devtools.messagewriter.MessageWriter;
 import io.quarkus.devtools.project.BuildTool;
 import io.quarkus.devtools.project.QuarkusProject;
@@ -52,6 +52,9 @@ public abstract class QuarkusProjectMojoBase extends AbstractMojo {
     protected MavenProject project;
 
     @Component
+    protected SisuBooter sisuBooter;
+
+    @Component
     protected RepositorySystem repoSystem;
 
     @Parameter(defaultValue = "${repositorySystemSession}", readonly = true)
@@ -68,9 +71,6 @@ public abstract class QuarkusProjectMojoBase extends AbstractMojo {
 
     @Parameter(property = "bomVersion", required = false)
     private String bomVersion;
-
-    @Component
-    RemoteRepositoryManager remoteRepositoryManager;
 
     private List<ArtifactCoords> importedPlatforms;
 
@@ -189,7 +189,6 @@ public abstract class QuarkusProjectMojoBase extends AbstractMojo {
                     .setRepositorySystemSession(
                             getLog().isDebugEnabled() ? repoSession : MojoUtils.muteTransferListener(repoSession))
                     .setRemoteRepositories(repos)
-                    .setRemoteRepositoryManager(remoteRepositoryManager)
                     .build();
         } catch (BootstrapMavenException e) {
             throw new MojoExecutionException("Failed to initialize Maven artifact resolver", e);

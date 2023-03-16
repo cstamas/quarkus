@@ -17,6 +17,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.repository.RemoteRepository;
 
 import io.quarkus.bootstrap.resolver.BootstrapAppModelResolver;
@@ -58,6 +59,9 @@ public class DependencyTreeMojo extends AbstractMojo {
      */
     @Parameter(property = "appendOutput", required = false, defaultValue = "false")
     boolean appendOutput;
+
+    @Component
+    protected RepositorySystem repositorySystem;
 
     protected MavenArtifactResolver resolver;
 
@@ -128,7 +132,6 @@ public class DependencyTreeMojo extends AbstractMojo {
     protected MavenArtifactResolver resolver() throws BootstrapMavenException {
         return resolver == null
                 ? resolver = MavenArtifactResolver.builder()
-                        .setRemoteRepositoryManager(bootstrapProvider.remoteRepositoryManager())
                         // The system needs to be initialized with the bootstrap model builder to properly interpolate system properties set on the command line
                         // e.g. -Dquarkus.platform.version=xxx
                         //.setRepositorySystem(bootstrapProvider.repositorySystem())

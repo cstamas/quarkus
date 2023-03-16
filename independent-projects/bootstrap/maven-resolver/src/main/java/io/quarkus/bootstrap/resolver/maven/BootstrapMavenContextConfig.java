@@ -10,14 +10,15 @@ import java.util.function.Function;
 import org.apache.maven.model.Model;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
 import org.eclipse.aether.repository.RemoteRepository;
 
+import io.quarkus.bootstrap.resolver.maven.internal.SisuBooter;
 import io.quarkus.bootstrap.resolver.maven.options.BootstrapMavenOptions;
 import io.quarkus.bootstrap.resolver.maven.workspace.LocalProject;
 
 public class BootstrapMavenContextConfig<T extends BootstrapMavenContextConfig<?>> {
 
+    protected SisuBooter sisuBooter;
     protected String localRepo;
     protected Boolean offline;
     protected LocalProject currentProject;
@@ -26,7 +27,6 @@ public class BootstrapMavenContextConfig<T extends BootstrapMavenContextConfig<?
     protected RepositorySystemSession repoSession;
     protected List<RemoteRepository> remoteRepos;
     protected List<RemoteRepository> remotePluginRepos;
-    protected RemoteRepositoryManager remoteRepoManager;
     protected String alternatePomName;
     protected File userSettings;
     protected boolean artifactTransferLogging = true;
@@ -136,18 +136,6 @@ public class BootstrapMavenContextConfig<T extends BootstrapMavenContextConfig<?
     @SuppressWarnings("unchecked")
     public T setRemotePluginRepositories(List<RemoteRepository> remotePluginRepos) {
         this.remotePluginRepos = remotePluginRepos;
-        return (T) this;
-    }
-
-    /**
-     * Remote repository manager
-     *
-     * @param remoteRepoManager
-     * @return
-     */
-    @SuppressWarnings("unchecked")
-    public T setRemoteRepositoryManager(RemoteRepositoryManager remoteRepoManager) {
-        this.remoteRepoManager = remoteRepoManager;
         return (T) this;
     }
 
