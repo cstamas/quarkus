@@ -18,7 +18,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
 import org.eclipse.aether.repository.RemoteRepository;
 
 import io.quarkus.bootstrap.resolver.maven.MavenArtifactResolver;
@@ -76,9 +75,6 @@ public class CreateJBangMojo extends AbstractMojo {
     @Component
     private RepositorySystem repoSystem;
 
-    @Component
-    RemoteRepositoryManager remoteRepoManager;
-
     @Override
     public void execute() throws MojoExecutionException {
         try {
@@ -97,7 +93,6 @@ public class CreateJBangMojo extends AbstractMojo {
                     .setRepositorySystemSession(
                             getLog().isDebugEnabled() ? repoSession : MojoUtils.muteTransferListener(repoSession))
                     .setRemoteRepositories(repos)
-                    .setRemoteRepositoryManager(remoteRepoManager)
                     .build();
         } catch (Exception e) {
             throw new MojoExecutionException("Failed to initialize Maven artifact resolver", e);

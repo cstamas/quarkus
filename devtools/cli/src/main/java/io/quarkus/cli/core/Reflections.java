@@ -15,8 +15,6 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
         org.apache.maven.repository.internal.DefaultVersionResolver.class,
         org.apache.maven.repository.internal.SnapshotMetadataGeneratorFactory.class,
         org.apache.maven.repository.internal.VersionsMetadataGeneratorFactory.class,
-        org.apache.maven.wagon.providers.http.HttpWagon.class,
-        org.apache.maven.wagon.shared.http.AbstractHttpClientWagon.class,
         org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory.class,
         org.eclipse.aether.internal.impl.DefaultArtifactResolver.class,
         org.eclipse.aether.internal.impl.DefaultChecksumPolicyProvider.class,
@@ -31,7 +29,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
         org.eclipse.aether.internal.impl.DefaultRepositoryEventDispatcher.class,
         org.eclipse.aether.internal.impl.DefaultRepositoryLayoutProvider.class,
         org.eclipse.aether.internal.impl.DefaultRepositorySystem.class,
-        org.eclipse.aether.internal.impl.DefaultSyncContextFactory.class,
+        org.eclipse.aether.internal.impl.synccontext.DefaultSyncContextFactory.class,
         org.eclipse.aether.internal.impl.DefaultTransporterProvider.class,
         org.eclipse.aether.internal.impl.DefaultUpdateCheckManager.class,
         org.eclipse.aether.internal.impl.DefaultUpdatePolicyAnalyzer.class,
@@ -39,7 +37,8 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
         org.eclipse.aether.internal.impl.Maven2RepositoryLayoutFactory.class,
         org.eclipse.aether.internal.impl.SimpleLocalRepositoryManagerFactory.class,
         org.eclipse.aether.internal.impl.collect.DefaultDependencyCollector.class,
-        org.eclipse.aether.transport.wagon.WagonTransporterFactory.class
+        org.eclipse.aether.transport.file.FileTransporterFactory.class,
+        org.eclipse.aether.transport.http.HttpTransporterFactory.class
 })
 public class Reflections {
 }

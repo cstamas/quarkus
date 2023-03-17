@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContextConfig;
+import io.quarkus.bootstrap.resolver.maven.MavenArtifactResolverInitializer;
 
 public class BootstrapMavenContextTestBase {
 
@@ -26,6 +27,7 @@ public class BootstrapMavenContextTestBase {
 
     @AfterEach
     public void afterEach() {
+        MavenArtifactResolverInitializer.reset();
         if (!cleanupProps.isEmpty()) {
             for (Map.Entry<String, String> entry : cleanupProps.entrySet()) {
                 if (entry.getValue() == null) {

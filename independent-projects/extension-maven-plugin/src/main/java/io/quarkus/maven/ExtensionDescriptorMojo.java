@@ -40,7 +40,6 @@ import org.eclipse.aether.collection.CollectResult;
 import org.eclipse.aether.graph.Dependency;
 import org.eclipse.aether.graph.DependencyNode;
 import org.eclipse.aether.graph.DependencyVisitor;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.ArtifactDescriptorException;
 import org.eclipse.aether.resolution.ArtifactDescriptorRequest;
@@ -66,6 +65,7 @@ import io.quarkus.bootstrap.model.ApplicationModelBuilder;
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
 import io.quarkus.bootstrap.resolver.maven.MavenArtifactResolver;
+import io.quarkus.bootstrap.resolver.maven.MavenArtifactResolverInitializer;
 import io.quarkus.bootstrap.resolver.maven.workspace.LocalProject;
 import io.quarkus.bootstrap.resolver.maven.workspace.LocalWorkspace;
 import io.quarkus.bootstrap.util.DependencyUtils;
@@ -106,9 +106,6 @@ public class ExtensionDescriptorMojo extends AbstractMojo {
      */
     @Component
     RepositorySystem repoSystem;
-
-    @Component
-    RemoteRepositoryManager remoteRepoManager;
 
     @Component
     BootstrapWorkspaceProvider workspaceProvider;
@@ -245,6 +242,9 @@ public class ExtensionDescriptorMojo extends AbstractMojo {
     ArtifactCoords deploymentCoords;
     CollectResult collectedDeploymentDeps;
     DependencyResult runtimeDeps;
+
+    @Component
+    MavenArtifactResolverInitializer mavenArtifactResolverInitializer;
 
     MavenArtifactResolver resolver;
 
@@ -1310,7 +1310,6 @@ public class ExtensionDescriptorMojo extends AbstractMojo {
             try {
                 final BootstrapMavenContext ctx = new BootstrapMavenContext(BootstrapMavenContext.config()
                         .setRepositorySystem(repoSystem)
-                        .setRemoteRepositoryManager(remoteRepoManager)
                         .setRepositorySystemSession(session)
                         .setRemoteRepositories(repos)
                         .setPreferPomsFromWorkspace(true)

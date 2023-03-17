@@ -3,8 +3,9 @@
  */
 package io.quarkus.bootstrap.resolver.maven;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -13,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
@@ -24,9 +24,9 @@ import org.eclipse.aether.collection.DependencyCollectionException;
 import org.eclipse.aether.graph.DefaultDependencyNode;
 import org.eclipse.aether.graph.Dependency;
 import org.eclipse.aether.graph.Exclusion;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
 import org.eclipse.aether.installation.InstallRequest;
 import org.eclipse.aether.installation.InstallationException;
+import org.eclipse.aether.repository.LocalRepositoryManager;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.ArtifactDescriptorException;
 import org.eclipse.aether.resolution.ArtifactDescriptorRequest;
@@ -47,8 +47,11 @@ import org.eclipse.aether.version.Version;
 
 import io.quarkus.bootstrap.resolver.maven.workspace.ProjectModuleResolver;
 import io.quarkus.bootstrap.util.DependencyUtils;
-import io.quarkus.bootstrap.util.PropertyUtils;
+import io.quarkus.bootstrap.util.IoUtils;
+import io.quarkus.maven.dependency.ArtifactCoords;
 import io.quarkus.maven.dependency.ArtifactKey;
+import io.quarkus.maven.dependency.ResolvableDependency;
+import io.quarkus.paths.PathList;
 
 /**
  *
@@ -56,19 +59,10 @@ import io.quarkus.maven.dependency.ArtifactKey;
  */
 public class MavenArtifactResolver {
 
-    private static final String SECONDARY_LOCAL_REPO_PROP = "io.quarkus.maven.secondary-local-repo";
-
     public static class Builder extends BootstrapMavenContextConfig<Builder> {
-
-        private Path secondaryLocalRepo;
 
         private Builder() {
             super();
-        }
-
-        public Builder setSecondaryLocalRepo(Path secondaryLocalRepo) {
-            this.secondaryLocalRepo = secondaryLocalRepo;
-            return this;
         }
 
         public MavenArtifactResolver build() throws BootstrapMavenException {
@@ -84,39 +78,37 @@ public class MavenArtifactResolver {
     protected final RepositorySystem repoSystem;
     protected final RepositorySystemSession repoSession;
     protected final List<RemoteRepository> remoteRepos;
-    protected final MavenLocalRepositoryManager localRepoManager;
-    protected final RemoteRepositoryManager remoteRepoManager;
 
     private MavenArtifactResolver(Builder builder) throws BootstrapMavenException {
         this.context = new BootstrapMavenContext(builder);
         this.repoSystem = context.getRepositorySystem();
 
         final RepositorySystemSession session = context.getRepositorySystemSession();
-        final String secondaryRepo = PropertyUtils.getProperty(SECONDARY_LOCAL_REPO_PROP);
-        if (secondaryRepo != null) {
-            builder.secondaryLocalRepo = Paths.get(secondaryRepo);
-        }
-        if (builder.secondaryLocalRepo != null) {
-            localRepoManager = new MavenLocalRepositoryManager(
-                    session.getLocalRepositoryManager(),
-                    builder.secondaryLocalRepo);
-            this.repoSession = new DefaultRepositorySystemSession(session).setLocalRepositoryManager(localRepoManager);
-        } else {
-            this.repoSession = session;
-            localRepoManager = null;
-        }
 
+        this.repoSession = session;
         this.remoteRepos = context.getRemoteRepositories();
-        this.remoteRepoManager = context.getRemoteRepositoryManager();
     }
 
     public MavenArtifactResolver(BootstrapMavenContext mvnSettings) throws BootstrapMavenException {
         this.context = mvnSettings;
         this.repoSystem = mvnSettings.getRepositorySystem();
         this.repoSession = mvnSettings.getRepositorySystemSession();
-        localRepoManager = null;
         this.remoteRepos = mvnSettings.getRemoteRepositories();
-        this.remoteRepoManager = mvnSettings.getRemoteRepositoryManager();
+    }
+
+    public void relink(ArtifactCoords coords, Path source) {
+        LocalRepositoryManager lrm = repoSession.getLocalRepositoryManager();
+        Path dest = new File(lrm.getRepository().getBasedir(),
+                // TODO: we need ext here, not "type"
+                lrm.getPathForLocalArtifact(new DefaultArtifact(coords.toGACTVString()))).toPath();
+        try {
+            IoUtils.copy(source, dest);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to copy " + source + " to a staging repo", e);
+        }
+        if (coords instanceof ResolvableDependency) {
+            ((ResolvableDependency) coords).setResolvedPaths(PathList.of(source));
+        }
     }
 
     public ProjectModuleResolver getProjectModuleResolver() {
@@ -125,14 +117,6 @@ public class MavenArtifactResolver {
 
     public BootstrapMavenContext getMavenContext() {
         return context;
-    }
-
-    public RemoteRepositoryManager getRemoteRepositoryManager() {
-        return remoteRepoManager;
-    }
-
-    public MavenLocalRepositoryManager getLocalRepositoryManager() {
-        return localRepoManager;
     }
 
     public RepositorySystem getSystem() {
@@ -361,8 +345,7 @@ public class MavenArtifactResolver {
     }
 
     public List<RemoteRepository> aggregateRepositories(List<RemoteRepository> dominant, List<RemoteRepository> recessive) {
-        return dominant.isEmpty() ? recessive
-                : remoteRepoManager.aggregateRepositories(repoSession, dominant, recessive, false);
+        return context.aggregateRepositories(dominant, recessive);
     }
 
     public void install(Artifact artifact) throws BootstrapMavenException {

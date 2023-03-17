@@ -29,7 +29,6 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuilder;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.fusesource.jansi.Ansi;
 
@@ -181,9 +180,6 @@ public class CreateProjectMojo extends AbstractMojo {
     @Component
     private RepositorySystem repoSystem;
 
-    @Component
-    RemoteRepositoryManager remoteRepoManager;
-
     @Parameter(property = "appConfig")
     private String appConfig;
 
@@ -209,7 +205,6 @@ public class CreateProjectMojo extends AbstractMojo {
                     .setRepositorySystemSession(
                             getLog().isDebugEnabled() ? repoSession : MojoUtils.muteTransferListener(repoSession))
                     .setRemoteRepositories(repos)
-                    .setRemoteRepositoryManager(remoteRepoManager)
                     .build();
         } catch (Exception e) {
             throw new MojoExecutionException("Failed to initialize Maven artifact resolver", e);

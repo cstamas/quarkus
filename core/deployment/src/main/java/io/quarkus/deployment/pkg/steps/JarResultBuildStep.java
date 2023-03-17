@@ -114,6 +114,7 @@ public class JarResultBuildStep {
         @Override
         public boolean test(String path) {
             return "META-INF/io.netty.versions.properties".equals(path) ||
+                    "META-INF/sisu/javax.inject.Named".equals(path) ||
                     (path.startsWith("META-INF/services/") && path.length() > 18);
         }
     };

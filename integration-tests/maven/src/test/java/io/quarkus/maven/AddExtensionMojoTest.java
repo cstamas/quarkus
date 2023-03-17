@@ -67,7 +67,6 @@ class AddExtensionMojoTest {
         mojo.repoSystem = mvn.getSystem();
         mojo.repoSession = mvn.getSession();
         mojo.repos = mvn.getRepositories();
-        mojo.remoteRepositoryManager = mvn.getRemoteRepositoryManager();
 
         final Model effectiveModel = model.clone();
         final DependencyManagement dm = new DependencyManagement();

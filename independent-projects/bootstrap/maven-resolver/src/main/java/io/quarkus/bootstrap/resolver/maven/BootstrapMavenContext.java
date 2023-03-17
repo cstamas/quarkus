@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -20,7 +21,6 @@ import org.apache.maven.cli.transfer.BatchModeMavenTransferListener;
 import org.apache.maven.cli.transfer.ConsoleMavenTransferListener;
 import org.apache.maven.cli.transfer.QuietMavenTransferListener;
 import org.apache.maven.model.Model;
-import org.apache.maven.model.building.ModelBuilder;
 import org.apache.maven.model.building.ModelProblemCollector;
 import org.apache.maven.model.building.ModelProblemCollectorRequest;
 import org.apache.maven.model.path.DefaultPathTranslator;
@@ -37,13 +37,17 @@ import org.apache.maven.settings.Profile;
 import org.apache.maven.settings.Server;
 import org.apache.maven.settings.Settings;
 import org.apache.maven.settings.SettingsUtils;
-import org.apache.maven.settings.building.DefaultSettingsBuilderFactory;
+import org.apache.maven.settings.building.DefaultSettingsBuilder;
 import org.apache.maven.settings.building.DefaultSettingsBuildingRequest;
+import org.apache.maven.settings.building.SettingsBuilder;
 import org.apache.maven.settings.building.SettingsBuildingException;
 import org.apache.maven.settings.building.SettingsBuildingResult;
 import org.apache.maven.settings.building.SettingsProblem;
 import org.apache.maven.settings.crypto.DefaultSettingsDecryptionRequest;
 import org.apache.maven.settings.crypto.SettingsDecryptionResult;
+import org.apache.maven.settings.io.DefaultSettingsReader;
+import org.apache.maven.settings.io.DefaultSettingsWriter;
+import org.apache.maven.settings.validation.DefaultSettingsValidator;
 import org.codehaus.plexus.configuration.xml.XmlPlexusConfiguration;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.aether.ConfigurationProperties;
@@ -53,10 +57,6 @@ import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
-import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory;
-import org.eclipse.aether.impl.DefaultServiceLocator;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
-import org.eclipse.aether.internal.impl.DefaultRemoteRepositoryManager;
 import org.eclipse.aether.repository.ArtifactRepository;
 import org.eclipse.aether.repository.Authentication;
 import org.eclipse.aether.repository.LocalRepository;
@@ -65,18 +65,14 @@ import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.repository.RepositoryPolicy;
 import org.eclipse.aether.resolution.ArtifactDescriptorException;
 import org.eclipse.aether.resolution.ArtifactDescriptorRequest;
-import org.eclipse.aether.spi.connector.RepositoryConnectorFactory;
-import org.eclipse.aether.spi.connector.transport.TransporterFactory;
 import org.eclipse.aether.transfer.TransferListener;
-import org.eclipse.aether.transport.wagon.WagonConfigurator;
-import org.eclipse.aether.transport.wagon.WagonProvider;
-import org.eclipse.aether.transport.wagon.WagonTransporterFactory;
 import org.eclipse.aether.util.repository.AuthenticationBuilder;
 import org.eclipse.aether.util.repository.DefaultAuthenticationSelector;
 import org.eclipse.aether.util.repository.DefaultMirrorSelector;
 import org.eclipse.aether.util.repository.DefaultProxySelector;
 import org.jboss.logging.Logger;
 
+import io.quarkus.bootstrap.resolver.maven.internal.SisuHandle;
 import io.quarkus.bootstrap.resolver.maven.options.BootstrapMavenOptions;
 import io.quarkus.bootstrap.resolver.maven.workspace.LocalProject;
 import io.quarkus.bootstrap.resolver.maven.workspace.LocalWorkspace;
@@ -99,6 +95,8 @@ public class BootstrapMavenContext {
 
     private static final String EFFECTIVE_MODEL_BUILDER_PROP = "quarkus.bootstrap.effective-model-builder";
 
+    static AtomicReference<SisuHandle> sisuBooter = new AtomicReference<>(null);
+
     private boolean artifactTransferLogging;
     private BootstrapMavenOptions cliOptions;
     private File userSettings;
@@ -112,16 +110,17 @@ public class BootstrapMavenContext {
     private RepositorySystemSession repoSession;
     private List<RemoteRepository> remoteRepos;
     private List<RemoteRepository> remotePluginRepos;
-    private RemoteRepositoryManager remoteRepoManager;
     private String localRepo;
     private Path currentPom;
     private Boolean currentProjectExists;
-    private DefaultServiceLocator serviceLocator;
     private String alternatePomName;
     private Path rootProjectDir;
     private boolean preferPomsFromWorkspace;
     private Boolean effectiveModelBuilder;
     private Boolean wsModuleParentHierarchy;
+
+    private SettingsBuilder settingsBuilder = new DefaultSettingsBuilder(new DefaultSettingsReader(),
+            new DefaultSettingsWriter(), new DefaultSettingsValidator());
 
     public static BootstrapMavenContextConfig<?> config() {
         return new BootstrapMavenContextConfig<>();
@@ -146,7 +145,6 @@ public class BootstrapMavenContext {
         this.repoSession = config.repoSession;
         this.remoteRepos = config.remoteRepos;
         this.remotePluginRepos = config.remotePluginRepos;
-        this.remoteRepoManager = config.remoteRepoManager;
         this.cliOptions = config.cliOptions;
         if (config.rootProjectDir == null) {
             final String topLevelBaseDirStr = PropertyUtils.getProperty(MAVEN_TOP_LEVEL_PROJECT_BASEDIR);
@@ -178,13 +176,18 @@ public class BootstrapMavenContext {
                     if (config.remoteRepos == null && remoteRepos != null) {
                         final List<RemoteRepository> rawProjectRepos = resolveRawProjectRepos(remoteRepos);
                         if (!rawProjectRepos.isEmpty()) {
-                            remoteRepos = getRemoteRepositoryManager().aggregateRepositories(repoSession, remoteRepos,
-                                    rawProjectRepos, true);
+                            remoteRepos = aggregateRepositories(remoteRepos, rawProjectRepos);
                         }
                     }
                 }
             }
         }
+    }
+
+    public List<RemoteRepository> aggregateRepositories(List<RemoteRepository> dominant, List<RemoteRepository> recessive) {
+        List<RemoteRepository> reposes = new ArrayList<>(dominant);
+        reposes.addAll(recessive);
+        return repoSystem.newResolutionRepositories(repoSession, reposes);
     }
 
     public ArtifactCoords getCurrentProjectArtifact(String extension) throws BootstrapMavenException {
@@ -261,7 +264,7 @@ public class BootstrapMavenContext {
                 : offline;
     }
 
-    public RepositorySystem getRepositorySystem() throws BootstrapMavenException {
+    public RepositorySystem getRepositorySystem() {
         return repoSystem == null ? repoSystem = newRepositorySystem() : repoSystem;
     }
 
@@ -294,8 +297,7 @@ public class BootstrapMavenContext {
 
         final Settings effectiveSettings;
         try {
-            final SettingsBuildingResult result = new DefaultSettingsBuilderFactory()
-                    .newInstance().build(settingsRequest);
+            final SettingsBuildingResult result = settingsBuilder.build(settingsRequest);
             final List<SettingsProblem> problems = result.getProblems();
             if (!problems.isEmpty()) {
                 for (SettingsProblem problem : problems) {
@@ -446,7 +448,7 @@ public class BootstrapMavenContext {
         final DefaultSettingsDecryptionRequest decrypt = new DefaultSettingsDecryptionRequest();
         decrypt.setProxies(settings.getProxies());
         decrypt.setServers(settings.getServers());
-        final SettingsDecryptionResult decrypted = new SettingsDecrypterImpl().decrypt(decrypt);
+        final SettingsDecryptionResult decrypted = mayBoot().getSettingsDecrypter().decrypt(decrypt);
         if (!decrypted.getProblems().isEmpty() && log.isDebugEnabled()) {
             // this is how maven handles these
             for (SettingsProblem p : decrypted.getProblems()) {
@@ -736,35 +738,17 @@ public class BootstrapMavenContext {
         return new Proxy(proxy.getProtocol(), proxy.getHost(), proxy.getPort(), auth);
     }
 
-    private RepositorySystem newRepositorySystem() throws BootstrapMavenException {
-        final DefaultServiceLocator locator = getServiceLocator();
-        if (!isOffline()) {
-            locator.addService(RepositoryConnectorFactory.class, BasicRepositoryConnectorFactory.class);
-            locator.addService(TransporterFactory.class, WagonTransporterFactory.class);
-            locator.setServices(WagonConfigurator.class, new BootstrapWagonConfigurator());
-            locator.setServices(WagonProvider.class, new BootstrapWagonProvider());
+    private SisuHandle mayBoot() {
+        SisuHandle current = sisuBooter.get();
+        if (current != null) {
+            return current;
         }
-        locator.setServices(ModelBuilder.class, new MavenModelBuilder(this));
-        locator.setErrorHandler(new DefaultServiceLocator.ErrorHandler() {
-            @Override
-            public void serviceCreationFailed(Class<?> type, Class<?> impl, Throwable exception) {
-                log.error("Failed to initialize " + impl.getName() + " as a service implementing " + type.getName(), exception);
-            }
-        });
-        return locator.getService(RepositorySystem.class);
+        sisuBooter.set(current = SisuHandle.boot(this));
+        return current;
     }
 
-    public RemoteRepositoryManager getRemoteRepositoryManager() {
-        if (remoteRepoManager != null) {
-            return remoteRepoManager;
-        }
-        final DefaultRemoteRepositoryManager remoteRepoManager = new DefaultRemoteRepositoryManager();
-        remoteRepoManager.initService(getServiceLocator());
-        return this.remoteRepoManager = remoteRepoManager;
-    }
-
-    private DefaultServiceLocator getServiceLocator() {
-        return serviceLocator == null ? serviceLocator = MavenRepositorySystemUtils.newServiceLocator() : serviceLocator;
+    private RepositorySystem newRepositorySystem() {
+        return mayBoot().getRepositorySystem();
     }
 
     private static String getUserAgent() {

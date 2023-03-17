@@ -23,7 +23,6 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -37,6 +36,7 @@ import io.quarkus.bootstrap.resolver.AppModelResolverException;
 import io.quarkus.bootstrap.resolver.BootstrapAppModelResolver;
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
 import io.quarkus.bootstrap.resolver.maven.MavenArtifactResolver;
+import io.quarkus.bootstrap.resolver.maven.MavenArtifactResolverInitializer;
 import io.quarkus.maven.components.ManifestSection;
 import io.quarkus.maven.dependency.ArtifactCoords;
 import io.quarkus.maven.dependency.ArtifactKey;
@@ -51,11 +51,11 @@ public class QuarkusBootstrapProvider implements Closeable {
     private static final String MANIFEST_SECTIONS_PROPERTY_PREFIX = "quarkus.package.manifest.manifest-sections";
     private static final String MANIFEST_ATTRIBUTES_PROPERTY_PREFIX = "quarkus.package.manifest.attributes";
 
+    @Requirement
+    protected MavenArtifactResolverInitializer mavenArtifactResolverInitializer;
+
     @Requirement(role = RepositorySystem.class, optional = false)
     protected RepositorySystem repoSystem;
-
-    @Requirement(role = RemoteRepositoryManager.class, optional = false)
-    protected RemoteRepositoryManager remoteRepoManager;
 
     private final Cache<String, QuarkusMavenAppBootstrap> appBootstrapProviders = CacheBuilder.newBuilder()
             .concurrencyLevel(4).softValues().initialCapacity(10).build();
@@ -82,10 +82,6 @@ public class QuarkusBootstrapProvider implements Closeable {
 
     public RepositorySystem repositorySystem() {
         return repoSystem;
-    }
-
-    public RemoteRepositoryManager remoteRepositoryManager() {
-        return remoteRepoManager;
     }
 
     public QuarkusMavenAppBootstrap bootstrapper(QuarkusBootstrapMojo mojo) {
@@ -157,8 +153,7 @@ public class QuarkusBootstrapProvider implements Closeable {
                         .setPreferPomsFromWorkspace(mode == LaunchMode.DEVELOPMENT || mode == LaunchMode.TEST)
                         .setRepositorySystem(repoSystem)
                         .setRepositorySystemSession(mojo.repositorySystemSession())
-                        .setRemoteRepositories(mojo.remoteRepositories())
-                        .setRemoteRepositoryManager(remoteRepoManager);
+                        .setRemoteRepositories(mojo.remoteRepositories());
                 if (mode == LaunchMode.DEVELOPMENT || mode == LaunchMode.TEST || isWorkspaceDiscovery(mojo)) {
                     builder.setWorkspaceDiscovery(true).setProjectModelProvider(getProjectMap(mojo.mavenSession())::get);
                 }

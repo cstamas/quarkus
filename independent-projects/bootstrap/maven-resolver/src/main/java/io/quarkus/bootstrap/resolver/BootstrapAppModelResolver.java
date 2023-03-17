@@ -41,7 +41,6 @@ import io.quarkus.bootstrap.workspace.SourceDir;
 import io.quarkus.bootstrap.workspace.WorkspaceModule;
 import io.quarkus.maven.dependency.ArtifactCoords;
 import io.quarkus.maven.dependency.ArtifactKey;
-import io.quarkus.maven.dependency.ResolvableDependency;
 import io.quarkus.maven.dependency.ResolvedDependency;
 import io.quarkus.maven.dependency.ResolvedDependencyBuilder;
 import io.quarkus.paths.PathCollection;
@@ -95,14 +94,7 @@ public class BootstrapAppModelResolver implements AppModelResolver {
 
     @Override
     public void relink(ArtifactCoords artifact, Path path) throws AppModelResolverException {
-        if (mvn.getLocalRepositoryManager() == null) {
-            return;
-        }
-        mvn.getLocalRepositoryManager().relink(artifact.getGroupId(), artifact.getArtifactId(), artifact.getClassifier(),
-                artifact.getType(), artifact.getVersion(), path);
-        if (artifact instanceof ResolvableDependency) {
-            ((ResolvableDependency) artifact).setResolvedPaths(PathList.of(path));
-        }
+        mvn.relink(artifact, path);
     }
 
     @Override

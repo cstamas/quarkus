@@ -37,6 +37,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.bootstrap.resolver.maven.MavenArtifactResolver;
+import io.quarkus.bootstrap.resolver.maven.MavenArtifactResolverInitializer;
+// import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
+// import io.quarkus.bootstrap.resolver.maven.MavenArtifactResolver;
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
 import uk.org.webcompere.systemstubs.jupiter.SystemStub;
 import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
@@ -56,12 +59,14 @@ class ExtensionDescriptorMojoTest extends AbstractMojoTestCase {
         super.setUp();
         // Make sure that we don't have the GITHUB_REPOSITORY environment variable masking what this mojo does
         environment.set("GITHUB_REPOSITORY", null);
+        getContainer().lookup(MavenArtifactResolverInitializer.class); // init
     }
 
     @AfterEach
     public void tearDown() throws Exception {
         super.tearDown();
 
+        MavenArtifactResolverInitializer.reset(); // reset
         // Assume that all our test data has a common org, for ease of cleanup
         File repoPath = new File(getLocalRepoPath(), "io/quackiverse");
         deleteDirectory(repoPath);
