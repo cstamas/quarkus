@@ -440,11 +440,11 @@
                 <plugin>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <configuration>
-                        <properties>
+                        <!--properties>
                             <predictiveSelection>
                                 <enabled>${develocity.pts.active}</enabled>
                             </predictiveSelection>
-                        </properties>
+                        </properties-->
                         <!-- combine.self suppresses warnings about java.io.tmpdir being defined twice -->
                         <systemPropertyVariables combine.self="override">
                             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
@@ -469,11 +469,11 @@
                 <plugin>
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <configuration>
-                        <properties>
+                        <!--properties>
                             <predictiveSelection>
                                 <enabled>${develocity.pts.active}</enabled>
                             </predictiveSelection>
-                        </properties>
+                        </properties-->
                         <systemPropertyVariables>
                             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                             <maven.home>${maven.home}</maven.home>
